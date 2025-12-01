@@ -1,0 +1,74 @@
+[
+  {
+    "data_type": "transaction",
+    "source_system": "pos-system",
+    "payload": {
+      "user_id": "user-a1b2c3d4",
+      "product_id": "electronics-0042",
+      "product_name": "Wireless Headphones",
+      "amount": 89.99,
+      "quantity": 1,
+      "category": "electronics",
+      "region": "us-west",
+      "payment_method": "credit_card",
+      "discount_applied": true,
+      "timestamp": "2024-12-02T10:30:45.123Z"
+    }
+  },
+  {
+    "data_type": "transaction",
+    "source_system": "web-store",
+    "payload": {
+      "user_id": "user-e5f6g7h8",
+      "product_id": "clothing-0156",
+      "product_name": "Running Shoes",
+      "amount": 124.50,
+      "quantity": 2,
+      "category": "sports",
+      "region": "eu-west",
+      "payment_method": "paypal",
+      "discount_applied": false,
+      "timestamp": "2024-12-02T10:31:12.456Z"
+    }
+  },
+  {
+    "data_type": "user_activity",
+    "source_system": "web-analytics",
+    "payload": {
+      "user_id": "user-i9j0k1l2",
+      "activity_type": "add_to_cart",
+      "page_url": "/products/electronics",
+      "session_id": "sess-abc123def456",
+      "region": "ap-southeast",
+      "device_type": "mobile",
+      "timestamp": "2024-12-02T10:32:00.789Z"
+    }
+  },
+  {
+    "data_type": "iot_sensor",
+    "source_system": "warehouse-iot",
+    "payload": {
+      "device_id": "sensor-0025",
+      "temperature": 22.5,
+      "humidity": 45.3,
+      "pressure": 1013.2,
+      "battery_level": 87.5,
+      "location": "us-east",
+      "status": "online",
+      "timestamp": "2024-12-02T10:33:15.234Z"
+    }
+  },
+  {
+    "data_type": "application_log",
+    "source_system": "payment-service",
+    "payload": {
+      "service": "payment-service",
+      "log_level": "INFO",
+      "message": "Payment processing completed successfully",
+      "request_id": "req-xyz789abc123",
+      "response_time_ms": 245,
+      "status_code": 200,
+      "timestamp": "2024-12-02T10:34:30.567Z"
+    }
+  }
+]

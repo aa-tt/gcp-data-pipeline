@@ -1,0 +1,29 @@
+# Example Terraform Variables
+# Copy this file to terraform.tfvars and update with your values
+
+project_id  = "your-gcp-project-id"
+region      = "us-central1"
+environment = "dev"
+
+# Storage lifecycle
+data_bucket_lifecycle_days = 30
+
+# Dataproc configuration
+dataproc_min_instances = 2
+dataproc_max_instances = 10
+
+# BigQuery configuration
+bigquery_dataset_location = "US"
+
+# Cloud Composer (set to true if you want to enable it - adds ~$300/month)
+enable_composer      = false
+composer_node_count  = 3
+composer_machine_type = "n1-standard-1"
+
+# Resource labels
+labels = {
+  environment = "dev"
+  managed_by  = "terraform"
+  team        = "data-engineering"
+  cost_center = "analytics"
+}
