@@ -34,6 +34,8 @@ resource "google_project_service" "required_apis" {
     "secretmanager.googleapis.com",
     "logging.googleapis.com",
     "monitoring.googleapis.com",
+    "run.googleapis.com",
+    "eventarc.googleapis.com",
   ])
 
   service            = each.value

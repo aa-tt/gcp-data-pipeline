@@ -110,47 +110,53 @@ enable_composer = false  # Set to true if you need Airflow
 ### Step 4: Deploy Infrastructure
 
 ```bash
+### Step 4: Upload Cloud Function Source Code (Before Terraform Apply)
+
+⚠️ **Important**: Upload function code BEFORE running `terraform apply` to avoid deployment issues.
+
+```bash
+# Package and upload data-ingestion function
+cd functions/data-ingestion
+zip -r data-ingestion.zip main.py requirements.txt
+gsutil cp data-ingestion.zip gs://${GCP_PROJECT_ID}-function-source-dev/cloud-functions/
+
+# Package and upload pubsub-processor function
+cd ../pubsub-processor
+zip -r pubsub-processor.zip main.py requirements.txt
+gsutil cp pubsub-processor.zip gs://${GCP_PROJECT_ID}-function-source-dev/cloud-functions/
+
+# Return to project root
+cd ../..
+```
+
+### Step 5: Deploy Infrastructure with Terraform
+
+```bash
+cd terraform
+
 # Initialize Terraform
 terraform init
 
 # Review the plan
 terraform plan
 
-# Apply (create resources)
+# Apply (create resources including Cloud Functions with uploaded code)
 terraform apply
 
 # This will take 5-10 minutes
 # Type 'yes' when prompted
 ```
 
-### Step 5: Deploy Application Code
+### Step 6: Upload PySpark Jobs
 
 ```bash
-# Make scripts executable
-chmod +x scripts/*.sh
-
-# Deploy everything
-./scripts/deploy.sh dev
-```
-
-Or deploy manually:
-
-```bash
-# Upload PySpark jobs
+# Upload PySpark jobs to staging bucket
+cd ..
 gsutil cp pyspark-jobs/*.py gs://${GCP_PROJECT_ID}-staging-dev/pyspark-jobs/
 gsutil cp pyspark-jobs/requirements.txt gs://${GCP_PROJECT_ID}-staging-dev/pyspark-jobs/
-
-# Package and upload Cloud Functions
-cd functions/data-ingestion
-zip -r data-ingestion.zip main.py requirements.txt
-gsutil cp data-ingestion.zip gs://${GCP_PROJECT_ID}-function-source-dev/cloud-functions/
-
-cd ../pubsub-processor
-zip -r pubsub-processor.zip main.py requirements.txt
-gsutil cp pubsub-processor.zip gs://${GCP_PROJECT_ID}-function-source-dev/cloud-functions/
 ```
 
-### Step 6: Test the Pipeline
+### Step 7: Test the Pipeline
 
 ```bash
 # Run test script
@@ -348,6 +354,36 @@ gcloud functions describe data-ingestion-dev --region=$GCP_REGION --gen2
 
 # View function logs
 gcloud functions logs read data-ingestion-dev --region=$GCP_REGION --limit=50
+```
+
+### Cloud Function 404 Error
+
+If you get a 404 error when testing the function:
+
+**Cause**: Function code wasn't uploaded before Terraform deployment.
+
+**Solution**:
+```bash
+# 1. Delete existing functions
+gcloud functions delete data-ingestion-dev --gen2 --region=$GCP_REGION --quiet
+gcloud functions delete pubsub-processor-dev --gen2 --region=$GCP_REGION --quiet
+
+# 2. Make sure function code is uploaded
+gsutil ls gs://${GCP_PROJECT_ID}-function-source-dev/cloud-functions/
+# Should show: data-ingestion.zip and pubsub-processor.zip
+
+# 3. If missing, upload them:
+cd functions/data-ingestion
+zip -r data-ingestion.zip main.py requirements.txt
+gsutil cp data-ingestion.zip gs://${GCP_PROJECT_ID}-function-source-dev/cloud-functions/
+
+cd ../pubsub-processor
+zip -r pubsub-processor.zip main.py requirements.txt
+gsutil cp pubsub-processor.zip gs://${GCP_PROJECT_ID}-function-source-dev/cloud-functions/
+
+# 4. Redeploy with Terraform
+cd ../../terraform
+terraform apply
 ```
 
 ## Cleanup

@@ -1,3 +1,8 @@
+# Get project number for Pub/Sub service account
+data "google_project" "project" {
+  project_id = var.project_id
+}
+
 # Storage bucket for Cloud Function source code
 resource "google_storage_bucket" "function_source" {
   name          = "${var.project_id}-function-source-${var.environment}"
@@ -33,7 +38,7 @@ resource "google_cloudfunctions2_function" "data_ingestion" {
   }
 
   service_config {
-    max_instance_count    = 100
+    max_instance_count    = 10
     min_instance_count    = 0
     available_memory      = "256M"
     timeout_seconds       = 60
@@ -48,13 +53,8 @@ resource "google_cloudfunctions2_function" "data_ingestion" {
 
   labels = var.labels
 
-  # Note: This will fail until the actual source code is uploaded
-  # For initial deployment, you may need to comment this out and deploy later
-  lifecycle {
-    ignore_changes = [
-      build_config[0].source[0].storage_source[0].object
-    ]
-  }
+  # Depend on source code being uploaded
+  depends_on = [google_storage_bucket.function_source]
 }
 
 # Cloud Function for Pub/Sub processing (Event triggered)
@@ -76,7 +76,7 @@ resource "google_cloudfunctions2_function" "pubsub_processor" {
   }
 
   service_config {
-    max_instance_count    = 100
+    max_instance_count    = 10
     min_instance_count    = 0
     available_memory      = "512M"
     timeout_seconds       = 300
@@ -99,11 +99,8 @@ resource "google_cloudfunctions2_function" "pubsub_processor" {
 
   labels = var.labels
 
-  lifecycle {
-    ignore_changes = [
-      build_config[0].source[0].storage_source[0].object
-    ]
-  }
+  # Depend on source code being uploaded
+  depends_on = [google_storage_bucket.function_source]
 }
 
 # Allow public invocation of HTTP function (adjust for production)
@@ -113,4 +110,13 @@ resource "google_cloudfunctions2_function_iam_member" "invoker" {
   cloud_function = google_cloudfunctions2_function.data_ingestion.name
   role           = "roles/cloudfunctions.invoker"
   member         = "allUsers"
+}
+
+# Allow Pub/Sub to invoke the pubsub-processor function
+resource "google_cloudfunctions2_function_iam_member" "pubsub_invoker" {
+  project        = var.project_id
+  location       = var.region
+  cloud_function = google_cloudfunctions2_function.pubsub_processor.name
+  role           = "roles/cloudfunctions.invoker"
+  member         = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
 }
