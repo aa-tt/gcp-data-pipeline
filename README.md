@@ -1,30 +1,29 @@
 # Few Considerations
-1. Traditional Spark Architecture - The typical high-volume data processing stack includes:
+**1. Traditional Spark Architecture - The typical high-volume data processing stack includes:**
+* PySpark on EMR/Databricks for distributed processing
+* Kafka as streaming data source
+* HDFS/Hive for intermediate storage
+* PostgreSQL/Data Warehouse for final storage
+* This is indeed costly due to persistent cluster costs.
 
-PySpark on EMR/Databricks for distributed processing
-Kafka as streaming data source
-HDFS/Hive for intermediate storage
-PostgreSQL/Data Warehouse for final storage
-This is indeed costly due to persistent cluster costs.
-
-2. AWS Cost-Optimized Architecture - Mostly Correct, with Adjustments:
+**2. AWS Cost-Optimized Architecture - Mostly Correct, with Adjustments:**
 
 ✅ Better approach:
 
-AWS Glue (serverless Spark) - not invoking Lambdas, but running PySpark ETL jobs directly
-Lambda - for lightweight transformations only (10GB memory, 15min timeout limits)
-S3 - intermediate storage ✓
-Kinesis/Kafka - streaming source
-Redshift/Athena - data warehouse (Databricks/Snowflake also work but add cost)
-⚠️ Note: Glue jobs don't invoke Lambdas for heavy ETL - Glue itself runs PySpark jobs serverlessly. Use Lambdas only for orchestration or light transformations.
+* AWS Glue (serverless Spark) - not invoking Lambdas, but running PySpark ETL jobs directly
+* Lambda - for lightweight transformations only (10GB memory, 15min timeout limits)
+* S3 - intermediate storage ✓
+* Kinesis/Kafka - streaming source
+* Redshift/Athena - data warehouse (Databricks/Snowflake also work but add cost)
+* ⚠️ Note: Glue jobs don't invoke Lambdas for heavy ETL - Glue itself runs PySpark jobs serverlessly. Use Lambdas only for orchestration or light transformations.
 
-3. Azure Architecture - Correct!
+**3. Azure Architecture**
 
-Azure Data Factory (ADF) - orchestration
-Azure Functions - lightweight processing
-Databricks/Synapse Analytics - Spark processing
-Blob Storage/ADLS Gen2 - intermediate storage
-Synapse/Databricks/Snowflake - data warehouse
+* Azure Data Factory (ADF) - orchestration
+* Azure Functions - lightweight processing
+* Databricks/Synapse Analytics - Spark processing
+* Blob Storage/ADLS Gen2 - intermediate storage
+* Synapse/Databricks/Snowflake - data warehouse
 
 # GCP Cost-Effective Data Pipeline
 
