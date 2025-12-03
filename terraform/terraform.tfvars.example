@@ -1,7 +1,7 @@
 # Example Terraform Variables
 # Copy this file to terraform.tfvars and update with your values
 
-project_id  = "your-gcp-project-id"
+project_id  = "datapipeline-480007"
 region      = "us-central1"
 environment = "dev"
 

@@ -25,7 +25,7 @@ terraform --version
 
 ```bash
 # Create a new project (or use existing)
-export PROJECT_ID="your-project-id"
+export PROJECT_ID="datapipeline-480007"
 gcloud projects create $PROJECT_ID --name="Data Pipeline"
 
 # Set as default project
@@ -60,7 +60,7 @@ export ENVIRONMENT="dev"
 
 Add to your `~/.zshrc` or `~/.bash_profile`:
 ```bash
-echo "export GCP_PROJECT_ID='your-project-id'" >> ~/.zshrc
+echo "export GCP_PROJECT_ID='datapipeline-480007'" >> ~/.zshrc
 echo "export GCP_REGION='us-central1'" >> ~/.zshrc
 source ~/.zshrc
 ```
@@ -385,6 +385,34 @@ gsutil cp pubsub-processor.zip gs://${GCP_PROJECT_ID}-function-source-dev/cloud-
 cd ../../terraform
 terraform apply
 ```
+
+### BigQuery Schema Mismatch Errors
+
+If you encounter schema mismatch errors when running PySpark jobs:
+
+**Common Errors:**
+- `Field event_timestamp has changed type from TIMESTAMP to STRING`
+- `Field attributes has changed type from JSON to STRING`
+- `Field value has changed type from NUMERIC to FLOAT`
+
+**Solutions:**
+See [SCHEMA_FIXES.md](../SCHEMA_FIXES.md) for detailed explanations and solutions.
+
+**Quick Fix:**
+```bash
+# If tables already exist with wrong schema, delete and recreate:
+bq rm -f -t ${GCP_PROJECT_ID}:data_warehouse_dev.analytics_data
+bq rm -f -t ${GCP_PROJECT_ID}:data_warehouse_dev.daily_metrics
+
+# Then reapply Terraform:
+cd terraform
+terraform apply
+```
+
+**Important Notes:**
+- Always use `F.to_timestamp()` for timestamp conversions in PySpark
+- PySpark's `F.to_json()` creates STRING, not JSON type
+- Use FLOAT in BigQuery for Spark aggregation results, not NUMERIC
 
 ## Cleanup
 

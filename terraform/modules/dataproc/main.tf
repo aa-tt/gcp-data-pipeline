@@ -59,8 +59,10 @@ resource "google_cloud_scheduler_job" "daily_etl" {
       runtimeConfig = {
         version = "2.1"
         properties = {
-          "spark.executor.memory" = "4g"
-          "spark.executor.cores"  = "2"
+          "spark.executor.memory"    = "4g"
+          "spark.executor.instances" = "2"
+          "spark.executor.cores"     = "4"
+          "spark.driver.cores"       = "4"
         }
       }
       environmentConfig = {

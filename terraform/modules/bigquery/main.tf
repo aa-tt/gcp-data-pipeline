@@ -101,6 +101,8 @@ resource "google_bigquery_table" "analytics" {
   project    = var.project_id
 
   description = "Transformed data for analytics"
+  
+  deletion_protection = false
 
   labels = var.labels
 
@@ -117,13 +119,13 @@ resource "google_bigquery_table" "analytics" {
     {
       name        = "event_date"
       type        = "DATE"
-      mode        = "REQUIRED"
+      mode        = "NULLABLE"
       description = "Event date"
     },
     {
       name        = "event_timestamp"
       type        = "TIMESTAMP"
-      mode        = "REQUIRED"
+      mode        = "NULLABLE"
       description = "Event timestamp"
     },
     {
@@ -139,20 +141,26 @@ resource "google_bigquery_table" "analytics" {
       description = "Product identifier"
     },
     {
+      name        = "transaction_id"
+      type        = "STRING"
+      mode        = "NULLABLE"
+      description = "Transaction identifier"
+    },
+    {
       name        = "category"
       type        = "STRING"
-      mode        = "REQUIRED"
+      mode        = "NULLABLE"
       description = "Event category"
     },
     {
       name        = "region"
       type        = "STRING"
-      mode        = "REQUIRED"
+      mode        = "NULLABLE"
       description = "Geographic region"
     },
     {
       name        = "amount"
-      type        = "NUMERIC"
+      type        = "FLOAT"
       mode        = "NULLABLE"
       description = "Transaction amount"
     },
@@ -164,9 +172,9 @@ resource "google_bigquery_table" "analytics" {
     },
     {
       name        = "attributes"
-      type        = "JSON"
+      type        = "STRING"
       mode        = "NULLABLE"
-      description = "Additional attributes"
+      description = "Additional attributes as JSON string"
     }
   ])
 }
@@ -178,6 +186,8 @@ resource "google_bigquery_table" "metrics" {
   project    = var.project_id
 
   description = "Daily aggregated metrics"
+  
+  deletion_protection = false
 
   labels = var.labels
 
@@ -190,13 +200,13 @@ resource "google_bigquery_table" "metrics" {
     {
       name        = "metric_date"
       type        = "DATE"
-      mode        = "REQUIRED"
+      mode        = "NULLABLE"
       description = "Metric date"
     },
     {
       name        = "metric_name"
       type        = "STRING"
-      mode        = "REQUIRED"
+      mode        = "NULLABLE"
       description = "Metric name"
     },
     {
@@ -207,14 +217,14 @@ resource "google_bigquery_table" "metrics" {
     },
     {
       name        = "value"
-      type        = "NUMERIC"
-      mode        = "REQUIRED"
+      type        = "FLOAT"
+      mode        = "NULLABLE"
       description = "Metric value"
     },
     {
       name        = "count"
       type        = "INTEGER"
-      mode        = "REQUIRED"
+      mode        = "NULLABLE"
       description = "Count of events"
     }
   ])

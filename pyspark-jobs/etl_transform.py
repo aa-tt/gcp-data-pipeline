@@ -55,14 +55,15 @@ class DataETL:
                   .load())
         elif source_type == "gcs":
             # Read from Cloud Storage (JSON, Parquet, CSV, etc.)
-            if source_path.endswith('.json'):
-                df = self.spark.read.json(source_path)
+            if source_path.endswith('.json') or '*.json' in source_path:
+                # For multiline JSON (pretty-printed), need multiLine option
+                df = self.spark.read.option("multiLine", "true").json(source_path)
             elif source_path.endswith('.parquet'):
                 df = self.spark.read.parquet(source_path)
             elif source_path.endswith('.csv'):
                 df = self.spark.read.csv(source_path, header=True, inferSchema=True)
             else:
-                df = self.spark.read.json(source_path)
+                df = self.spark.read.option("multiLine", "true").json(source_path)
         else:
             raise ValueError(f"Unsupported source type: {source_type}")
         
@@ -81,47 +82,44 @@ class DataETL:
         """
         logger.info("Starting data transformation")
         
-        # Example: Parse raw_payload JSON field
-        if 'raw_payload' in df.columns:
-            # Extract fields from JSON
-            df = df.withColumn("parsed_data", F.from_json(
-                F.col("raw_payload"),
-                StructType([
-                    StructField("user_id", StringType()),
-                    StructField("product_id", StringType()),
-                    StructField("amount", DoubleType()),
-                    StructField("quantity", IntegerType()),
-                    StructField("category", StringType()),
-                    StructField("region", StringType())
-                ])
-            ))
+        # The JSON files from GCS have structure: {id, processed_timestamp, data_type, data: {...}, metadata}
+        # Extract fields from the nested 'data' field
+        if 'data' in df.columns:
+            # Convert the entire data struct to JSON string, then parse it back to access fields safely
+            df = df.withColumn("data_json", F.to_json(F.col("data")))
             
-            # Flatten the structure
+            # Extract fields using JSON path - these return NULL if field doesn't exist
             df = df.select(
                 F.col("id"),
                 F.col("ingestion_timestamp"),
                 F.col("source_system"),
                 F.col("data_type"),
-                F.col("parsed_data.user_id").alias("user_id"),
-                F.col("parsed_data.product_id").alias("product_id"),
-                F.col("parsed_data.amount").alias("amount"),
-                F.col("parsed_data.quantity").alias("quantity"),
-                F.col("parsed_data.category").alias("category"),
-                F.col("parsed_data.region").alias("region")
+                F.get_json_object(F.col("data_json"), "$.user_id").alias("user_id"),
+                F.get_json_object(F.col("data_json"), "$.product_id").alias("product_id"),
+                F.get_json_object(F.col("data_json"), "$.transaction_id").alias("transaction_id"),
+                F.get_json_object(F.col("data_json"), "$.amount").cast("double").alias("amount"),
+                F.get_json_object(F.col("data_json"), "$.quantity").cast("int").alias("quantity"),
+                F.get_json_object(F.col("data_json"), "$.category").alias("category"),
+                F.get_json_object(F.col("data_json"), "$.region").alias("region")
             )
         
         # Add event date and timestamp
-        df = df.withColumn("event_date", F.to_date(F.col("ingestion_timestamp")))
-        df = df.withColumn("event_timestamp", F.col("ingestion_timestamp"))
+        # IMPORTANT: Convert ingestion_timestamp string to proper timestamp type
+        # BigQuery expects TIMESTAMP type, not STRING. Use F.to_timestamp() for conversion.
+        # This prevents schema mismatch errors when writing to BigQuery.
+        df = df.withColumn("event_timestamp", F.to_timestamp(F.col("ingestion_timestamp")))
+        df = df.withColumn("event_date", F.to_date(F.col("event_timestamp")))
         
-        # Filter out invalid records
+        # Filter out records without amount (keep only transaction-like events)
+        # For this example, we only process events with amount
         df = df.filter(
             (F.col("amount").isNotNull()) &
-            (F.col("amount") > 0) &
-            (F.col("category").isNotNull())
+            (F.col("amount") > 0)
         )
         
         # Add additional attributes as JSON
+        # NOTE: F.to_json() creates a STRING, not JSON type in BigQuery
+        # The BigQuery table schema should use STRING type for attributes field
         df = df.withColumn("attributes", F.to_json(
             F.struct(
                 F.col("source_system"),
@@ -135,6 +133,7 @@ class DataETL:
             "event_timestamp",
             "user_id",
             "product_id",
+            "transaction_id",
             "category",
             "region",
             "amount",
@@ -223,13 +222,10 @@ class DataETL:
         try:
             logger.info(f"Starting ETL job for date: {self.date}")
             
-            # Step 1: Read raw data from BigQuery
-            raw_table = f"{self.project_id}.data_warehouse_{self.environment}.raw_data"
-            raw_df = self.read_raw_data("bigquery", raw_table)
-            
-            # Filter for specific date if needed
-            if self.date:
-                raw_df = raw_df.filter(F.to_date(F.col("ingestion_timestamp")) == self.date)
+            # Step 1: Read raw data from GCS (processed JSON files)
+            gcs_input_path = f"gs://{self.project_id}-processed-data-{self.environment}/processed/*/{self.date.replace('-', '/')}/*.json"
+            logger.info(f"Reading from GCS: {gcs_input_path}")
+            raw_df = self.read_raw_data("gcs", gcs_input_path)
             
             # Step 2: Transform data
             transformed_df = self.transform_data(raw_df)

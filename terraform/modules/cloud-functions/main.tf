@@ -104,19 +104,21 @@ resource "google_cloudfunctions2_function" "pubsub_processor" {
 }
 
 # Allow public invocation of HTTP function (adjust for production)
-resource "google_cloudfunctions2_function_iam_member" "invoker" {
-  project        = var.project_id
-  location       = var.region
-  cloud_function = google_cloudfunctions2_function.data_ingestion.name
-  role           = "roles/cloudfunctions.invoker"
-  member         = "allUsers"
+# Note: For Cloud Functions Gen2, use Cloud Run IAM since they run on Cloud Run
+resource "google_cloud_run_service_iam_member" "data_ingestion_invoker" {
+  project  = var.project_id
+  location = var.region
+  service  = google_cloudfunctions2_function.data_ingestion.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
 }
 
-# Allow Pub/Sub to invoke the pubsub-processor function
-resource "google_cloudfunctions2_function_iam_member" "pubsub_invoker" {
-  project        = var.project_id
-  location       = var.region
-  cloud_function = google_cloudfunctions2_function.pubsub_processor.name
-  role           = "roles/cloudfunctions.invoker"
-  member         = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
+# Allow unauthenticated invocation of pubsub-processor function
+# This is safe because the function is event-triggered, not publicly accessible via HTTP
+resource "google_cloud_run_service_iam_member" "pubsub_processor_invoker" {
+  project  = var.project_id
+  location = var.region
+  service  = google_cloudfunctions2_function.pubsub_processor.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
 }

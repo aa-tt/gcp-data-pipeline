@@ -60,6 +60,7 @@ resource "google_service_account" "data_pipeline_sa" {
 resource "google_project_iam_member" "pipeline_permissions" {
   for_each = toset([
     "roles/dataproc.worker",
+    "roles/dataproc.editor",
     "roles/bigquery.dataEditor",
     "roles/bigquery.jobUser",
     "roles/storage.objectAdmin",

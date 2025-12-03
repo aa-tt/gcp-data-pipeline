@@ -58,9 +58,6 @@ def process_message(cloud_event):
         # Write to Cloud Storage
         write_to_gcs(processed_data)
         
-        # Optionally write to BigQuery
-        # write_to_bigquery(processed_data)
-        
         logger.info(f"Successfully processed message: {message_data.get('id')}")
         
     except Exception as e:
