@@ -60,3 +60,9 @@ functions/**/*.zip
 .env.local
 *.bak
 *.tmp
+
+# React / Node.js
+react-app/node_modules/
+react-app/dist/
+react-app/.vite/
+react-app/build/
