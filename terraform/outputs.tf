@@ -62,6 +62,12 @@ output "data_ingestion_function_url" {
   value       = module.cloud_functions.ingestion_function_url
 }
 
+output "analytics_query_function_url" {
+  description = "URL of the analytics query Cloud Function"
+  value       = module.cloud_functions.analytics_query_function_url
+}
+
+
 # Dataproc outputs
 output "dataproc_batch_endpoint" {
   description = "Endpoint for submitting Dataproc serverless batches"

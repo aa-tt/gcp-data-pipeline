@@ -360,3 +360,32 @@ terraform fmt -check
 ## 📄 License
 
 MIT License - See LICENSE file for details
+
+## Demo
+**Deployment URLs:**
+- **React UI:** https://data-pipeline-ui-dev-rn5o2asova-uc.a.run.app
+- **Data Ingestion:** https://data-ingestion-dev-rn5o2asova-uc.a.run.app
+- **Trigger Dataproc:** (optionally, if need quick result)
+```
+gcloud dataproc batches submit pyspark \
+  gs://datapipeline-480007-staging-dev/pyspark-jobs/etl_transform.py \
+  --region=us-central1 \
+  --project=datapipeline-480007 \
+  --service-account=data-pipeline-sa-dev@datapipeline-480007.iam.gserviceaccount.com \
+  -- \
+  --project-id=datapipeline-480007 \
+  --environment=dev \
+  --date=2025-12-26
+```
+- **Analytics Query:** https://analytics-query-dev-rn5o2asova-uc.a.run.app
+
+**Complete Pipeline Flow:**
+1. User submits data → React UI
+2. POST to data-ingestion → Cloud Function
+3. Publish to Pub/Sub → Message Queue
+4. Process message → pubsub-processor Function
+5. Write to Cloud Storage → Partitioned JSON
+6. Transform & Load → Dataproc PySpark Job
+7. Store in BigQuery → analytics_data + daily_metrics tables
+8. Query results → analytics-query Function
+9. Display in UI → Charts, tables, and metrics ✨

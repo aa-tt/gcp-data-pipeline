@@ -122,3 +122,48 @@ resource "google_cloud_run_service_iam_member" "pubsub_processor_invoker" {
   role     = "roles/run.invoker"
   member   = "allUsers"
 }
+
+# Cloud Function for analytics query (HTTP triggered)
+resource "google_cloudfunctions2_function" "analytics_query" {
+  name        = "analytics-query-${var.environment}"
+  location    = var.region
+  description = "Queries BigQuery for analytics data and metrics"
+
+  build_config {
+    runtime     = "python311"
+    entry_point = "query_analytics"
+    
+    source {
+      storage_source {
+        bucket = google_storage_bucket.function_source.name
+        object = "cloud-functions/analytics-query.zip"
+      }
+    }
+  }
+
+  service_config {
+    max_instance_count    = 10
+    min_instance_count    = 0
+    available_memory      = "256M"
+    timeout_seconds       = 60
+    service_account_email = var.service_account
+
+    environment_variables = {
+      ENVIRONMENT       = var.environment
+      GCP_PROJECT       = var.project_id
+    }
+  }
+
+  labels = var.labels
+
+  depends_on = [google_storage_bucket.function_source]
+}
+
+# Allow public invocation of analytics query function
+resource "google_cloud_run_service_iam_member" "analytics_query_invoker" {
+  project  = var.project_id
+  location = var.region
+  service  = google_cloudfunctions2_function.analytics_query.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}

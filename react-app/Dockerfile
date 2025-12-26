@@ -3,9 +3,11 @@ FROM node:18-alpine AS build
 
 WORKDIR /app
 
-# Accept build argument for API URL
+# Accept build arguments for API URLs
 ARG VITE_API_URL=https://data-ingestion-dev-rn5o2asova-uc.a.run.app
+ARG VITE_ANALYTICS_URL=https://analytics-query-dev-rn5o2asova-uc.a.run.app
 ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_ANALYTICS_URL=$VITE_ANALYTICS_URL
 
 # Copy package files
 COPY package.json ./
@@ -18,10 +20,11 @@ RUN npm config set registry https://registry.npmjs.org/ && \
 # Copy source code
 COPY . .
 
-# Create .env file with the API URL
-RUN echo "VITE_API_URL=$VITE_API_URL" > .env
+# Create .env file with the API URLs
+RUN echo "VITE_API_URL=$VITE_API_URL" > .env && \
+    echo "VITE_ANALYTICS_URL=$VITE_ANALYTICS_URL" >> .env
 
-# Build the application with the environment variable
+# Build the application with the environment variables
 RUN npm run build
 
 # Production stage - Use nginx for serving static files
