@@ -156,14 +156,45 @@ gsutil cp pyspark-jobs/*.py gs://${GCP_PROJECT_ID}-staging-dev/pyspark-jobs/
 gsutil cp pyspark-jobs/requirements.txt gs://${GCP_PROJECT_ID}-staging-dev/pyspark-jobs/
 ```
 
-### Step 7: Test the Pipeline
+### Step 7: Deploy React UI (Optional)
+
+```bash
+# Navigate to React app
+cd react-app
+
+# Build and deploy to Cloud Run using Terraform
+cd ../terraform
+terraform apply
+
+# Or deploy manually with gcloud
+cd ../react-app
+gcloud run deploy data-pipeline-ui \
+  --source . \
+  --platform managed \
+  --region ${GCP_REGION} \
+  --allow-unauthenticated \
+  --set-env-vars VITE_API_URL=https://${GCP_REGION}-${GCP_PROJECT_ID}.cloudfunctions.net/data-ingestion-function-dev
+
+# Get the UI URL
+UI_URL=$(gcloud run services describe data-pipeline-ui \
+  --region=${GCP_REGION} \
+  --format='value(status.url)')
+echo "React UI available at: $UI_URL"
+```
+
+### Step 8: Test the Pipeline
 
 ```bash
 # Run test script
 ./scripts/test.sh dev
 ```
 
-Or test manually:
+**Option 1: Using React UI**
+- Open the React UI URL in your browser
+- Fill in the form with sample data
+- Click "Send Data" to test the pipeline
+
+**Option 2: Test manually with curl:**
 
 ```bash
 # 1. Publish to Pub/Sub

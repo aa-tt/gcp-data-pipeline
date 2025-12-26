@@ -89,3 +89,14 @@ output "submit_dataproc_job_command" {
   description = "Example command to submit a Dataproc serverless job"
   value       = "gcloud dataproc batches submit pyspark gs://${module.storage.staging_bucket_name}/pyspark-jobs/etl_transform.py --region=${var.region} --service-account=${google_service_account.data_pipeline_sa.email}"
 }
+
+# Cloud Run UI outputs
+output "ui_service_url" {
+  description = "URL of the React UI application (if enabled)"
+  value       = var.enable_ui ? module.cloud_run[0].service_url : "UI not enabled"
+}
+
+output "ui_service_name" {
+  description = "Name of the Cloud Run UI service (if enabled)"
+  value       = var.enable_ui ? module.cloud_run[0].service_name : "UI not enabled"
+}

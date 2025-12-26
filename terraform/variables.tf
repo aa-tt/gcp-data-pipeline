@@ -57,6 +57,18 @@ variable "enable_composer" {
   default     = false
 }
 
+variable "enable_ui" {
+  description = "Enable Cloud Run deployment for React UI"
+  type        = bool
+  default     = true
+}
+
+variable "ui_allow_unauthenticated" {
+  description = "Allow unauthenticated access to the UI (set to false for production)"
+  type        = bool
+  default     = true
+}
+
 variable "labels" {
   description = "Labels to apply to all resources"
   type        = map(string)

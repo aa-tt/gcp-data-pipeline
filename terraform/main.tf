@@ -153,3 +153,18 @@ module "composer" {
 
   depends_on = [google_project_service.composer_api]
 }
+
+module "cloud_run" {
+  count  = var.enable_ui ? 1 : 0
+  source = "./modules/cloud-run"
+
+  project_id              = var.project_id
+  region                  = var.region
+  environment             = var.environment
+  labels                  = var.labels
+  service_account         = google_service_account.data_pipeline_sa.email
+  ingestion_function_url  = module.cloud_functions.ingestion_function_url
+  allow_unauthenticated   = var.ui_allow_unauthenticated
+
+  depends_on = [google_project_service.required_apis, module.cloud_functions]
+}

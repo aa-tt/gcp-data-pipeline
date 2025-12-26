@@ -20,6 +20,10 @@ enable_composer      = false
 composer_node_count  = 3
 composer_machine_type = "n1-standard-1"
 
+# React UI on Cloud Run (set to false to skip UI deployment)
+enable_ui                 = true
+ui_allow_unauthenticated  = true  # Set to false for production with authentication
+
 # Resource labels
 labels = {
   environment = "dev"

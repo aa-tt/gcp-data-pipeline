@@ -39,21 +39,35 @@ def ingest_data(request):
     Returns:
         Tuple of (response_text, status_code)
     """
+    # Set CORS headers for all responses
+    headers = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Max-Age': '3600'
+    }
+    
+    # Handle preflight OPTIONS request
+    if request.method == 'OPTIONS':
+        return ('', 204, headers)
+    
     try:
         # Parse request
         request_json = request.get_json(silent=True)
         
         if not request_json:
-            return {'error': 'No JSON data provided'}, 400
+            return ({'error': 'No JSON data provided'}, 400, headers)
         
         # Validate required fields
         required_fields = ['data_type', 'payload']
         missing_fields = [field for field in required_fields if field not in request_json]
         
         if missing_fields:
-            return {
-                'error': f'Missing required fields: {", ".join(missing_fields)}'
-            }, 400
+            return (
+                {'error': f'Missing required fields: {", ".join(missing_fields)}'},
+                400,
+                headers
+            )
         
         # Enrich data with metadata
         enriched_data = {
@@ -76,15 +90,19 @@ def ingest_data(request):
         
         logger.info(f"Published message {message_id} to {PUBSUB_TOPIC}")
         
-        return {
-            'status': 'success',
-            'message_id': message_id,
-            'record_id': enriched_data['id']
-        }, 200
+        return (
+            {
+                'status': 'success',
+                'message_id': message_id,
+                'record_id': enriched_data['id']
+            },
+            200,
+            headers
+        )
         
     except Exception as e:
         logger.error(f"Error ingesting data: {str(e)}", exc_info=True)
-        return {'error': str(e)}, 500
+        return ({'error': str(e)}, 500, headers)
 
 
 @functions_framework.http

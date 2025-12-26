@@ -43,10 +43,26 @@ gcp-data-pipeline/
 │       │   ├── variables.tf
 │       │   └── outputs.tf
 │       │
+│       ├── cloud-run/                 # Cloud Run for React UI
+│       │   ├── main.tf
+│       │   ├── variables.tf
+│       │   └── outputs.tf
+│       │
 │       └── composer/                  # Cloud Composer (Airflow)
 │           ├── main.tf
 │           ├── variables.tf
 │           └── outputs.tf
+│
+├── react-app/                         # React UI for data ingestion
+│   ├── src/                           # React source code
+│   │   ├── App.jsx                    # Main component
+│   │   ├── App.css                    # Styles
+│   │   └── main.jsx                   # Entry point
+│   ├── Dockerfile                     # Container configuration
+│   ├── package.json                   # NPM dependencies
+│   ├── vite.config.js                 # Vite build config
+│   ├── .env.example                   # Environment variables template
+│   └── README.md                      # UI documentation
 │
 ├── functions/                         # Cloud Function source code
 │   ├── data-ingestion/                # HTTP-triggered ingestion
@@ -101,6 +117,8 @@ gcp-data-pipeline/
 
 | File | Purpose | Modify When |
 |------|---------|-------------|
+| `react-app/src/App.jsx` | React UI main component | Changing UI functionality |
+| `react-app/Dockerfile` | Cloud Run container config | Changing deployment |
 | `functions/data-ingestion/main.py` | HTTP data ingestion | Changing ingestion logic |
 | `functions/pubsub-processor/main.py` | Pub/Sub processing | Changing validation rules |
 | `pyspark-jobs/etl_transform.py` | PySpark ETL | Changing transformations |

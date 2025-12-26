@@ -46,14 +46,49 @@ A serverless, cost-optimized data processing pipeline on Google Cloud Platform u
 ### Pipeline Flow
 
 ```
-Data Sources → Pub/Sub → Cloud Functions (optional) → Dataproc Serverless (PySpark)
-                                                              ↓
-                                                    Cloud Storage (GCS)
-                                                              ↓
-                                                         BigQuery
-                                                              ↓
-                                    Cloud Composer orchestrates the entire flow
+User Browser (React UI) ──┐
+API/Webhook Calls ────────┼──> Cloud Function (HTTP) ──> Pub/Sub ──> Cloud Storage
+Data Sources ─────────────┘         (Ingestion)                         (Raw Data)
+                                                                              │
+                                                                              ▼
+                                                                    Dataproc Serverless
+                                                                         (PySpark)
+                                                                              │
+                                                                     ┌────────┴────────┐
+                                                                     ▼                 ▼
+                                                              BigQuery          Cloud Storage
+                                                              (Analytics)       (Processed)
+                                                                     │
+                                                                     ▼
+                                          Cloud Composer orchestrates the entire flow
+                                                (Airflow - Optional)
 ```
+
+## 🌐 React UI Application
+
+The project includes a modern React web interface for easy data submission:
+
+**Features:**
+- Simple form-based data submission
+- Support for multiple data types (events, transactions, sensor data, logs)
+- JSON editor for custom properties
+- Real-time response feedback
+- Sample data generator for testing
+- Deployed on Cloud Run (serverless)
+
+**Access the UI:**
+After deployment, get the URL with:
+```bash
+gcloud run services describe data-pipeline-ui-dev --region=us-central1 --format='value(status.url)'
+```
+
+Or deploy manually:
+```bash
+cd react-app
+./scripts/deploy-ui.sh dev
+```
+
+See `react-app/README.md` for detailed documentation.
 
 ## 💰 Cost Optimization Strategy
 
@@ -82,6 +117,7 @@ Data Sources → Pub/Sub → Cloud Functions (optional) → Dataproc Serverless 
 2. **Service Account** with appropriate permissions
 3. **Terraform** >= 1.0
 4. **gcloud CLI** installed and authenticated
+5. **Node.js 18+** and npm (for React UI development)
 
 ### Local Setup
 
@@ -103,6 +139,29 @@ terraform plan -var="project_id=${GCP_PROJECT_ID}" -var="region=${GCP_REGION}"
 
 # Apply (create resources)
 terraform apply -var="project_id=${GCP_PROJECT_ID}" -var="region=${GCP_REGION}"
+```
+
+### Deploy React UI to Cloud Run
+
+```bash
+# Build and deploy the React UI
+cd react-app
+
+# Create .env file with your Cloud Function URL
+cp .env.example .env
+# Edit .env and set VITE_API_URL to your function URL
+
+# Deploy to Cloud Run
+gcloud run deploy data-pipeline-ui \
+  --source . \
+  --platform managed \
+  --region ${GCP_REGION} \
+  --allow-unauthenticated \
+  --set-env-vars VITE_API_URL=https://${GCP_REGION}-${GCP_PROJECT_ID}.cloudfunctions.net/data-ingestion-function-dev
+
+# Get the URL
+echo "React UI URL:"
+gcloud run services describe data-pipeline-ui --region ${GCP_REGION} --format 'value(status.url)'
 ```
 
 ### GitHub Actions Deployment
