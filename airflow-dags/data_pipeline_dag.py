@@ -2,24 +2,26 @@
 Airflow DAG for Data Pipeline Orchestration
 
 This DAG orchestrates the complete data pipeline:
-1. Check for new data in Pub/Sub
-2. Trigger PySpark ETL job on Dataproc Serverless
-3. Validate data quality
-4. Generate metrics and reports
-5. Send notifications
+1. Wait for new processed data in Cloud Storage (from UI → Cloud Function → Pub/Sub → Cloud Storage)
+2. Check data availability in GCS processed bucket
+3. Trigger PySpark ETL job on Dataproc Serverless to load into BigQuery
+4. Validate data quality in BigQuery analytics_data table
+5. Update daily_metrics aggregated table
+6. Generate metrics and reports
+7. Send success notifications
 
 Schedule: Daily at 2 AM
 """
 
 from datetime import datetime, timedelta
 from airflow import DAG
-from airflow.providers.google.cloud.operators.dataproc import DataprocSubmitJobOperator
+from airflow.providers.google.cloud.operators.dataproc import DataprocCreateBatchOperator
 from airflow.providers.google.cloud.operators.bigquery import (
     BigQueryCheckOperator,
     BigQueryInsertJobOperator,
 )
-from airflow.providers.google.cloud.operators.gcs import GCSFileTransformOperator
-from airflow.providers.google.cloud.sensors.gcs import GCSObjectExistenceSensor
+from airflow.providers.google.cloud.operators.gcs import GCSListObjectsOperator
+from airflow.providers.google.cloud.sensors.gcs import GCSObjectsWithPrefixExistenceSensor
 from airflow.operators.python import PythonOperator
 from airflow.operators.email import EmailOperator
 from airflow.utils.task_group import TaskGroup
@@ -63,25 +65,24 @@ dag = DAG(
 
 
 def check_data_availability(**context):
-    """Check if there's data to process"""
-    from google.cloud import bigquery
+    """Check if there's data to process in Cloud Storage"""
+    from google.cloud import storage
     
-    client = bigquery.Client()
+    client = storage.Client()
+    bucket = client.bucket(PROCESSED_BUCKET)
     execution_date = context['ds']
     
-    query = f"""
-        SELECT COUNT(*) as record_count
-        FROM `{PROJECT_ID}.{DATASET_ID}.raw_data`
-        WHERE DATE(ingestion_timestamp) = '{execution_date}'
-    """
+    # Check for processed files in partitioned path
+    date_parts = execution_date.split('-')
+    prefix = f"processed/user_event/{date_parts[0]}/{date_parts[1]}/{date_parts[2]}/"
     
-    result = client.query(query).result()
-    count = list(result)[0].record_count
+    blobs = list(bucket.list_blobs(prefix=prefix))
+    count = len(blobs)
     
-    print(f"Found {count} records for {execution_date}")
+    print(f"Found {count} files in gs://{PROCESSED_BUCKET}/{prefix}")
     
     if count == 0:
-        raise ValueError(f"No data found for {execution_date}")
+        raise ValueError(f"No processed data found for {execution_date}")
     
     return count
 
@@ -148,7 +149,18 @@ def generate_summary_report(**context):
     return True
 
 
-# Task 1: Check data availability
+# Task 1: Wait for processed data in Cloud Storage
+wait_for_data = GCSObjectsWithPrefixExistenceSensor(
+    task_id='wait_for_processed_data',
+    bucket=PROCESSED_BUCKET,
+    prefix='processed/user_event/{{ macros.ds_format(ds, "%Y-%m-%d", "%Y/%m/%d") }}/',
+    timeout=300,  # 5 minutes timeout
+    poke_interval=30,  # Check every 30 seconds
+    mode='poke',
+    dag=dag,
+)
+
+# Task 2: Check data availability
 check_data = PythonOperator(
     task_id='check_data_availability',
     python_callable=check_data_availability,
@@ -157,31 +169,37 @@ check_data = PythonOperator(
 )
 
 # Task 2: Submit PySpark ETL job to Dataproc Serverless
-pyspark_job = {
-    "reference": {"project_id": PROJECT_ID},
-    "placement": {"cluster_name": ""},
-    "pyspark_job": {
-        "main_python_file_uri": f"gs://{STAGING_BUCKET}/pyspark-jobs/etl_transform.py",
-        "args": [
-            "--project-id", PROJECT_ID,
-            "--environment", ENVIRONMENT,
-            "--date", "{{ ds }}"
-        ],
-        "jar_file_uris": [],
-        "properties": {
-            "spark.executor.memory": "4g",
-            "spark.executor.cores": "2",
-            "spark.dynamicAllocation.enabled": "true",
-        }
-    },
-}
-
-# For Dataproc Serverless (Batch API)
-submit_etl_job = DataprocSubmitJobOperator(
+submit_etl_job = DataprocCreateBatchOperator(
     task_id='submit_pyspark_etl',
-    job=pyspark_job,
-    region=REGION,
     project_id=PROJECT_ID,
+    region=REGION,
+    batch={
+        "pyspark_batch": {
+            "main_python_file_uri": f"gs://{STAGING_BUCKET}/pyspark-jobs/etl_transform.py",
+            "args": [
+                "--project-id", PROJECT_ID,
+                "--environment", ENVIRONMENT,
+                "--date", "{{ ds }}"
+            ],
+            "jar_file_uris": [
+                "gs://spark-lib/bigquery/spark-bigquery-with-dependencies_2.12-0.32.2.jar"
+            ],
+        },
+        "environment_config": {
+            "execution_config": {
+                "service_account": f"data-pipeline-sa-{ENVIRONMENT}@{PROJECT_ID}.iam.gserviceaccount.com",
+            }
+        },
+        "runtime_config": {
+            "properties": {
+                "spark.executor.instances": "2",
+                "spark.executor.memory": "4g",
+                "spark.executor.cores": "2",
+                "spark.dynamicAllocation.enabled": "true",
+            }
+        },
+    },
+    batch_id=f"etl-batch-{{{{ ds_nodash }}}}-{{{{ ts_nodash }}}}",
     dag=dag,
 )
 
@@ -226,16 +244,32 @@ update_metrics = BigQueryInsertJobOperator(
     configuration={
         "query": {
             "query": f"""
+                -- Delete existing metrics for the date to avoid duplicates
+                DELETE FROM `{PROJECT_ID}.{DATASET_ID}.daily_metrics`
+                WHERE metric_date = DATE('{{{{ ds }}}}');
+                
+                -- Insert new metrics aggregated by multiple dimensions
                 INSERT INTO `{PROJECT_ID}.{DATASET_ID}.daily_metrics`
                 SELECT 
                     DATE('{{{{ ds }}}}') as metric_date,
-                    'daily_total' as metric_name,
-                    category as dimension,
+                    'total_amount' as metric_name,
+                    NULL as dimension,
+                    SUM(amount) as value,
+                    COUNT(*) as count
+                FROM `{PROJECT_ID}.{DATASET_ID}.analytics_data`
+                WHERE event_date = '{{{{ ds }}}}';
+                
+                -- Insert per-product metrics
+                INSERT INTO `{PROJECT_ID}.{DATASET_ID}.daily_metrics`
+                SELECT 
+                    DATE('{{{{ ds }}}}') as metric_date,
+                    'product_amount' as metric_name,
+                    product_id as dimension,
                     SUM(amount) as value,
                     COUNT(*) as count
                 FROM `{PROJECT_ID}.{DATASET_ID}.analytics_data`
                 WHERE event_date = '{{{{ ds }}}}'
-                GROUP BY category
+                GROUP BY product_id;
             """,
             "useLegacySql": False,
         }
@@ -266,5 +300,5 @@ send_notification = EmailOperator(
 )
 
 # Define task dependencies
-check_data >> submit_etl_job >> validate_quality >> bq_checks
+wait_for_data >> check_data >> submit_etl_job >> validate_quality >> bq_checks
 bq_checks >> update_metrics >> generate_report >> send_notification
