@@ -48,6 +48,8 @@ resource "google_cloudfunctions2_function" "data_ingestion" {
       PUBSUB_TOPIC      = var.pubsub_topic
       ENVIRONMENT       = var.environment
       GCP_PROJECT       = var.project_id
+      SPANNER_INSTANCE  = var.spanner_instance
+      SPANNER_DATABASE  = var.spanner_database
     }
   }
 

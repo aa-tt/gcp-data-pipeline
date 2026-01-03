@@ -69,6 +69,30 @@ variable "ui_allow_unauthenticated" {
   default     = true
 }
 
+variable "enable_spanner" {
+  description = "Enable Cloud Spanner for transaction deduplication and real-time state"
+  type        = bool
+  default     = false
+}
+
+variable "spanner_instance_config" {
+  description = "Spanner instance configuration (regional-us-central1, nam3, nam6, etc.)"
+  type        = string
+  default     = "regional-us-central1"
+}
+
+variable "spanner_node_count" {
+  description = "Number of Spanner nodes (1 node = 2TB storage + 10K QPS, ~$90/month)"
+  type        = number
+  default     = 1
+}
+
+variable "spanner_deletion_protection" {
+  description = "Enable deletion protection for Spanner instance"
+  type        = bool
+  default     = true
+}
+
 variable "labels" {
   description = "Labels to apply to all resources"
   type        = map(string)

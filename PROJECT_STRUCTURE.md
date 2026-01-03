@@ -48,6 +48,11 @@ gcp-data-pipeline/
 │       │   ├── variables.tf
 │       │   └── outputs.tf
 │       │
+│       ├── spanner/                   # Cloud Spanner (optional)
+│       │   ├── main.tf
+│       │   ├── variables.tf
+│       │   └── outputs.tf
+│       │
 │       └── composer/                  # Cloud Composer (Airflow)
 │           ├── main.tf
 │           ├── variables.tf
@@ -157,8 +162,10 @@ terraform/main.tf
     ├── modules/storage          (4 buckets)
     ├── modules/pubsub           (4 topics, 4 subscriptions)
     ├── modules/bigquery         (1 dataset, 3 tables, 1 view)
+    ├── modules/spanner          (optional - distributed database)
+    │       └── instance, database, tables, IAM
     ├── modules/cloud-functions  (2 functions)
-    │       └── depends on: storage, pubsub
+    │       └── depends on: storage, pubsub, spanner (optional)
     ├── modules/dataproc         (serverless config)
     │       └── depends on: storage
     └── modules/composer         (optional)
@@ -266,12 +273,14 @@ When fully deployed, you'll have:
 - **Pub/Sub**: 4 topics, 4 subscriptions
 - **BigQuery**: 1 dataset, 3 tables, 1 view
 - **Cloud Functions**: 2 functions
+- **Cloud Spanner**: 1 instance, 1 database, 3 tables (optional)
 - **IAM**: 1 service account + roles
 - **Cloud Scheduler**: 1 job
 - **Cloud Composer**: 1 environment (optional)
+- **Cloud Run**: 1 service (React UI)
 - **Monitoring**: Automatic dashboards and logs
 
-**Total: ~20-25 GCP resources**
+**Total: ~25-30 GCP resources**
 
 ## Maintenance Files
 

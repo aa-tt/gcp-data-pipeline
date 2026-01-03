@@ -106,3 +106,24 @@ output "ui_service_name" {
   description = "Name of the Cloud Run UI service (if enabled)"
   value       = var.enable_ui ? module.cloud_run[0].service_name : "UI not enabled"
 }
+
+# Cloud Spanner outputs
+output "spanner_instance_name" {
+  description = "Name of the Spanner instance (if enabled)"
+  value       = var.enable_spanner ? module.spanner[0].instance_name : "Spanner not enabled"
+}
+
+output "spanner_database_name" {
+  description = "Name of the Spanner transactions database (if enabled)"
+  value       = var.enable_spanner ? module.spanner[0].database_name : "Spanner not enabled"
+}
+
+output "spanner_connection_string" {
+  description = "Spanner connection string for applications (if enabled)"
+  value       = var.enable_spanner ? module.spanner[0].connection_string : "Spanner not enabled"
+}
+
+output "spanner_instance_config" {
+  description = "Spanner instance configuration (if enabled)"
+  value       = var.enable_spanner ? module.spanner[0].instance_config : "Spanner not enabled"
+}

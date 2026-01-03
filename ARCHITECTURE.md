@@ -16,8 +16,13 @@
         ┌─────────────────────────────────────┐
         │   Cloud Function (HTTP Trigger)     │
         │   - Validate incoming data          │
+        │   - Check for duplicates (Spanner)  │
         │   - Enrich with metadata            │
         └──────────────┬──────────────────────┘
+                       │
+                       ├──> Cloud Spanner (Optional)
+                       │    - Transaction deduplication
+                       │    - Strong consistency
                        │
                        ▼
         ┌─────────────────────────────────────┐
@@ -132,6 +137,18 @@ Cloud Storage ──> Dataproc Serverless (PySpark) ──┐
 │    ├─ analytics_data (partitioned)  │
 │    ├─ daily_metrics                 │
 │    └─ latest_analytics_view         │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│      Cloud Spanner (Optional)       │
+├─────────────────────────────────────┤
+│  Database: transactions-db          │
+│    ├─ transactions                  │
+│    │    (transaction deduplication) │
+│    ├─ daily_counters                │
+│    │    (real-time aggregations)    │
+│    └─ user_profiles                 │
+│         (user state management)     │
 └─────────────────────────────────────┘
 ```
 
@@ -337,19 +354,22 @@ RPO: < 15 minutes
 Small Scale (< 100GB/day)
    ├─ Cloud Functions: 256MB, max 10 instances
    ├─ Dataproc: 2 workers, n1-standard-4
-   └─ BigQuery: On-demand pricing
-   Cost: ~$100/month
+   ├─ BigQuery: On-demand pricing
+   └─ Spanner: 1 node (optional, +$90/month)
+   Cost: ~$100/month (or ~$190 with Spanner)
 
 Medium Scale (< 1TB/day)
    ├─ Cloud Functions: 512MB, max 100 instances
    ├─ Dataproc: 5 workers, n1-standard-8
-   └─ BigQuery: On-demand or 100 slots
-   Cost: ~$500/month
+   ├─ BigQuery: On-demand or 100 slots
+   └─ Spanner: 3 nodes (optional, +$270/month)
+   Cost: ~$500/month (or ~$770 with Spanner)
 
 Large Scale (< 10TB/day)
    ├─ Cloud Functions: 1GB, max 1000 instances
    ├─ Dataproc: 20 workers, n1-highmem-8
-   └─ BigQuery: 500 slots commitment
+   ├─ BigQuery: 500 slots commitment
+   └─ Spanner: 5+ nodes (optional, +$450+/month)
    Cost: ~$5,000/month
 
 Enterprise Scale (> 10TB/day)

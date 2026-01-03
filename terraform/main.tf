@@ -36,6 +36,7 @@ resource "google_project_service" "required_apis" {
     "monitoring.googleapis.com",
     "run.googleapis.com",
     "eventarc.googleapis.com",
+    "spanner.googleapis.com",
   ])
 
   service            = each.value
@@ -63,9 +64,11 @@ resource "google_project_iam_member" "pipeline_permissions" {
     "roles/dataproc.editor",
     "roles/bigquery.dataEditor",
     "roles/bigquery.jobUser",
+    "roles/bigquery.readSessionUser",
     "roles/storage.objectAdmin",
     "roles/pubsub.editor",
     "roles/logging.logWriter",
+    "roles/spanner.databaseUser",
   ])
 
   project = var.project_id
@@ -120,6 +123,8 @@ module "cloud_functions" {
   service_account     = google_service_account.data_pipeline_sa.email
   pubsub_topic        = module.pubsub.raw_data_topic_id
   processed_bucket    = module.storage.processed_bucket_name
+  spanner_instance    = var.enable_spanner ? module.spanner[0].instance_name : ""
+  spanner_database    = var.enable_spanner ? module.spanner[0].database_name : ""
 
   depends_on = [google_project_service.required_apis]
 }
@@ -167,4 +172,19 @@ module "cloud_run" {
   allow_unauthenticated   = var.ui_allow_unauthenticated
 
   depends_on = [google_project_service.required_apis, module.cloud_functions]
+}
+
+module "spanner" {
+  count  = var.enable_spanner ? 1 : 0
+  source = "./modules/spanner"
+
+  project_id                 = var.project_id
+  region                     = var.region
+  environment                = var.environment
+  labels                     = var.labels
+  spanner_instance_config    = var.spanner_instance_config
+  spanner_node_count         = var.spanner_node_count
+  enable_deletion_protection = var.spanner_deletion_protection
+
+  depends_on = [google_project_service.required_apis, google_service_account.data_pipeline_sa]
 }

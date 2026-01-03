@@ -41,27 +41,29 @@ A serverless, cost-optimized data processing pipeline on Google Cloud Platform u
 | Step Functions | Logic Apps | **Cloud Composer (Airflow)** | Workflow orchestration |
 | S3 | Blob Storage | **Cloud Storage** | Object storage |
 | Athena | Synapse SQL | **BigQuery** | Data warehouse |
+| DynamoDB/Aurora | Cosmos DB | **Cloud Spanner** | Distributed SQL database |
 | Glue Data Catalog | Purview | **Data Catalog** | Metadata management |
 
 ### Pipeline Flow
 
 ```
 User Browser (React UI) ──┐
-API/Webhook Calls ────────┼──> Cloud Function (HTTP) ──> Pub/Sub ──> Cloud Storage
-Data Sources ─────────────┘         (Ingestion)                         (Raw Data)
-                                                                              │
-                                                                              ▼
-                                                                    Dataproc Serverless
-                                                                         (PySpark)
-                                                                              │
-                                                                     ┌────────┴────────┐
-                                                                     ▼                 ▼
-                                                              BigQuery          Cloud Storage
-                                                              (Analytics)       (Processed)
-                                                                     │
-                                                                     ▼
-                                          Cloud Composer orchestrates the entire flow
-                                                (Airflow - Optional)
+API/Webhook Calls ────────┼──> Cloud Function (HTTP) ──> Cloud Spanner ──> Pub/Sub ──> Cloud Storage
+Data Sources ─────────────┘     (Ingestion)              (Deduplication)                  (Raw Data)
+                                                          (Optional)
+                                                                                                │
+                                                                                                ▼
+                                                                                      Dataproc Serverless
+                                                                                           (PySpark)
+                                                                                                │
+                                                                                       ┌────────┴────────┐
+                                                                                       ▼                 ▼
+                                                                                BigQuery          Cloud Storage
+                                                                                (Analytics)       (Processed)
+                                                                                       │
+                                                                                       ▼
+                                            Cloud Composer orchestrates the entire flow
+                                                  (Airflow - Optional)
 ```
 
 ## 🌐 React UI Application
@@ -107,7 +109,8 @@ See `react-app/README.md` for detailed documentation.
 - Dataproc Serverless: ~$100-150 (vs $500-1000 for persistent EMR)
 - BigQuery Storage: ~$20
 - Cloud Storage: ~$20
-- **Total: ~$200-250/month** vs $1000+ for EMR
+- Cloud Spanner: ~$90 (optional - 1 node for deduplication)
+- **Total: ~$200-250/month** (or ~$290-340 with Spanner) vs $1000+ for EMR
 
 ## 🚀 Quick Start
 
@@ -203,6 +206,7 @@ gcp-data-pipeline/
 │   │   ├── dataproc/          # Dataproc Serverless
 │   │   ├── storage/           # Cloud Storage buckets
 │   │   ├── bigquery/          # BigQuery datasets and tables
+│   │   ├── spanner/           # Cloud Spanner (optional)
 │   │   └── composer/          # Cloud Composer (Airflow)
 │   └── backend.tf             # Terraform state backend
 ├── functions/
@@ -382,10 +386,11 @@ gcloud dataproc batches submit pyspark \
 **Complete Pipeline Flow:**
 1. User submits data → React UI
 2. POST to data-ingestion → Cloud Function
-3. Publish to Pub/Sub → Message Queue
-4. Process message → pubsub-processor Function
-5. Write to Cloud Storage → Partitioned JSON
-6. Transform & Load → Dataproc PySpark Job
-7. Store in BigQuery → analytics_data + daily_metrics tables
-8. Query results → analytics-query Function
-9. Display in UI → Charts, tables, and metrics ✨
+3. Check for duplicates → Cloud Spanner (optional)
+4. Publish to Pub/Sub → Message Queue
+5. Process message → pubsub-processor Function
+6. Write to Cloud Storage → Partitioned JSON
+7. Transform & Load → Dataproc PySpark Job
+8. Store in BigQuery → analytics_data + daily_metrics tables
+9. Query results → analytics-query Function
+10. Display in UI → Charts, tables, and metrics ✨

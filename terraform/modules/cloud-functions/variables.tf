@@ -32,3 +32,15 @@ variable "processed_bucket" {
   description = "Processed data bucket name"
   type        = string
 }
+
+variable "spanner_instance" {
+  description = "Cloud Spanner instance name"
+  type        = string
+  default     = ""
+}
+
+variable "spanner_database" {
+  description = "Cloud Spanner database name"
+  type        = string
+  default     = ""
+}

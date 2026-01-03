@@ -24,6 +24,12 @@ composer_machine_type = "n1-standard-1"
 enable_ui                 = true
 ui_allow_unauthenticated  = true  # Set to false for production with authentication
 
+# Cloud Spanner for transaction deduplication (set to true to enable - adds ~$90/month per node)
+enable_spanner              = false
+spanner_instance_config     = "regional-us-central1"  # Options: regional-us-central1, nam3, nam6
+spanner_node_count          = 1                       # 1 node = 2TB storage + 10K QPS
+spanner_deletion_protection = true                    # Prevent accidental deletion
+
 # Resource labels
 labels = {
   environment = "dev"
